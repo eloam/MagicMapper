@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MagicMapper\MagicMapper.csproj" />
+        <ProjectReference Include="..\MagicMapper.Generator\MagicMapper.Generator.csproj"  OutputItemType="Analyzer" />
     </ItemGroup>
 
 </Project>

@@ -1,8 +1,6 @@
-namespace ConsoleTest
+namespace MagicMapper;
+
+[AttributeUsage(AttributeTargets.Method, Inherited = false)]
+public sealed class MapperAttribute : Attribute
 {
-    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public sealed class MapperAttribute : Attribute
-    {
-        public MapperAttribute() { }
-    }
 }

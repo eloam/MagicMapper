@@ -6,10 +6,4 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\MagicMapper.Generator\MagicMapper.Generator.csproj"
-                        OutputItemType="Analyzer"
-                        ReferenceOutputAssembly="true" />
-    </ItemGroup>
-
 </Project>
