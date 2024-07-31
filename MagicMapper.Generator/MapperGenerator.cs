@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using MagicMapper.Generator.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -26,6 +27,7 @@ namespace MagicMapper.Generator
 
             var attributeSymbol = context.Compilation.GetTypeByMetadataName("MagicMapper.MapperAttribute");
 
+
             foreach (var method in receiver.CandidateMethods)
             {
                 var model = context.Compilation.GetSemanticModel(method.SyntaxTree);
@@ -34,13 +36,17 @@ namespace MagicMapper.Generator
                 if (methodSymbol == null || !methodSymbol.GetAttributes().Any(ad => ad.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default)))
                     continue;
 
-                var source = GenerateMapperClass(methodSymbol);
+                var source = GenerateMapperMethod(methodSymbol);
+                
                 context.AddSource($"{methodSymbol.ContainingType.Name}_{Guid.NewGuid()}.g.cs", SourceText.From(source, Encoding.UTF8));
             }
         }
 
-        private string GenerateMapperClass(IMethodSymbol methodSymbol)
+        private string GenerateMapperMethod(IMethodSymbol methodSymbol)
         {
+            var sourceVariableName = methodSymbol.Parameters[0].Name;
+            var targetVariableName = "result";
+            
             var sourceType = methodSymbol.Parameters[0].Type;
             var targetType = methodSymbol.ReturnType;
 
@@ -55,33 +61,29 @@ namespace MagicMapper.Generator
                 {
                     if (targetProperty.Type.Equals(sourceProperty.Type, SymbolEqualityComparer.Default))
                     {
-                        mappings.AppendLine($"result.{targetProperty.Name} = value.{sourceProperty.Name};");
+                        mappings.AppendLine($"{targetVariableName}.{targetProperty.Name} = {sourceVariableName}.{sourceProperty.Name};");
                     }
                     else if (targetProperty.Type.TypeKind == TypeKind.Class && !targetProperty.Type.IsValueType)
                     {
-                        mappings.AppendLine($"result.{targetProperty.Name} = Map(value.{sourceProperty.Name});");
+                        mappings.AppendLine($"{targetVariableName}.{targetProperty.Name} = {methodSymbol.Name}({sourceVariableName}.{sourceProperty.Name});");
                     }
                 }
             }
+            
 
             var source = $@"
-using System;
-
-namespace {methodSymbol.ContainingNamespace}
-{{
-    public partial class {methodSymbol.ContainingType.Name}
-    {{
         public partial {methodSymbol.ReturnType} {methodSymbol.Name}({sourceType} value)
         {{
             var result = new {methodSymbol.ReturnType}();
             {mappings}
             return result;
         }}
-    }}
-}}
                 ";
             
-            source = CSharpSyntaxTree.ParseText(source).GetRoot().NormalizeWhitespace().ToFullString();
+            ClassElement classElement = new ClassElement(@namespace: methodSymbol.ContainingNamespace.Name, className: methodSymbol.ContainingType.Name);
+            classElement.AddMethod(source);
+            
+            source = CSharpSyntaxTree.ParseText(classElement.ToString()).GetRoot().NormalizeWhitespace().ToFullString();
             
             return source;
         }
