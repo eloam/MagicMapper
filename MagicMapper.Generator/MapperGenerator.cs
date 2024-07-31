@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -7,7 +6,6 @@ using MagicMapper.Generator.Serialization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace MagicMapper.Generator
 {
@@ -22,11 +20,13 @@ namespace MagicMapper.Generator
 
         public void Execute(GeneratorExecutionContext context)
         {
+            
             if (!(context.SyntaxReceiver is SyntaxReceiver receiver))
                 return;
 
             var attributeSymbol = context.Compilation.GetTypeByMetadataName("MagicMapper.MapperAttribute");
 
+            ClassGeneratorHelper classGeneratorHelper = new ClassGeneratorHelper(context);
 
             foreach (var method in receiver.CandidateMethods)
             {
@@ -36,13 +36,13 @@ namespace MagicMapper.Generator
                 if (methodSymbol == null || !methodSymbol.GetAttributes().Any(ad => ad.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default)))
                     continue;
 
-                var source = GenerateMapperMethod(methodSymbol);
-                
-                context.AddSource($"{methodSymbol.ContainingType.Name}_{Guid.NewGuid()}.g.cs", SourceText.From(source, Encoding.UTF8));
+                var source = GenerateMapperMethod(methodSymbol, classGeneratorHelper);
             }
+            
+            classGeneratorHelper.Generate();
         }
 
-        private string GenerateMapperMethod(IMethodSymbol methodSymbol)
+        private string GenerateMapperMethod(IMethodSymbol methodSymbol, ClassGeneratorHelper classGeneratorHelper)
         {
             var sourceVariableName = methodSymbol.Parameters[0].Name;
             var targetVariableName = "result";
@@ -80,7 +80,7 @@ namespace MagicMapper.Generator
         }}
                 ";
             
-            ClassElement classElement = new ClassElement(@namespace: methodSymbol.ContainingNamespace.Name, className: methodSymbol.ContainingType.Name);
+            ClassElement classElement = classGeneratorHelper.AddClassElement(@namespace: methodSymbol.ContainingNamespace.Name, className: methodSymbol.ContainingType.Name);
             classElement.AddMethod(source);
             
             source = CSharpSyntaxTree.ParseText(classElement.ToString()).GetRoot().NormalizeWhitespace().ToFullString();

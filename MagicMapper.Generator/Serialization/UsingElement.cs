@@ -1,3 +1,5 @@
+using System;
+
 namespace MagicMapper.Generator.Serialization
 {
     internal sealed class UsingElement : Element
