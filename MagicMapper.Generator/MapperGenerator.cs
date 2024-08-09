@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using MagicMapper.Generator.Serialization;
 using MagicMapper.Generator.Syntax;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -26,8 +25,6 @@ namespace MagicMapper.Generator
 
             var attributeSymbol = context.Compilation.GetTypeByMetadataName("MagicMapper.MapperAttribute");
 
-            ClassGeneratorHelper classGeneratorHelper = new ClassGeneratorHelper(context);
-            
             ClassBuilderSourceWriter classBuilderSourceWriter = new ClassBuilderSourceWriter();
 
             foreach (var method in receiver.CandidateMethods)
@@ -46,10 +43,7 @@ namespace MagicMapper.Generator
             {
                 context.AddSource($"{classDeclaration.Name}.g.cs", SourceText.From(classDeclaration.Build(), Encoding.UTF8));
             }
-            
-            classGeneratorHelper.Generate();
         }
-        
 
         class SyntaxReceiver : ISyntaxReceiver
         {
