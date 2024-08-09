@@ -4,12 +4,13 @@ namespace MagicMapper.Generator.Serialization
 {
     internal sealed class NamespaceElement : Element
     {
-        private readonly string _namespace;
         private string _source = null;
-
+        
+        public string Namespace { get; }
+        
         public NamespaceElement(string @namespace)
         {
-            _namespace = @namespace;
+            Namespace = @namespace;
         }
 
         public NamespaceElement UseBlockSyntax(string source)
@@ -20,7 +21,7 @@ namespace MagicMapper.Generator.Serialization
         
         public override string ToString()
         {
-            string output = $"namespace {_namespace}";
+            string output = $"namespace {Namespace}";
 
             if (_source != null)
             {

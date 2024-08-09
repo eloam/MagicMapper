@@ -19,7 +19,7 @@ namespace MagicMapper.Generator.Serialization
         public ClassElement AddClassElement(ClassElement element)
         {
             ClassElement existingElement = _classes.FirstOrDefault(item => 
-                item.Namespace == element.Namespace && item.ClassName == element.ClassName);
+                item.Namespace == element.Namespace && item.Name == element.Name);
             
             if (existingElement != null)
             {
@@ -40,7 +40,7 @@ namespace MagicMapper.Generator.Serialization
         {
             foreach (ClassElement element in _classes)
             {
-                _context.AddSource($"{element.ClassName}.g.cs", SourceText.From(element.ToString(), Encoding.UTF8));
+               // _context.AddSource($"{element.Name}.g.cs", SourceText.From(element.ToString(), Encoding.UTF8));
             }
         }
     }

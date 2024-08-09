@@ -5,14 +5,16 @@ namespace MagicMapper.Generator.Serialization
 {
     internal sealed class MethodElement : Element
     {
-        private readonly string _namespace;
-        private readonly string _className;
         private readonly StringBuilder _source;
+        
+        public string Namespace { get; }
+        
+        public string ClassName { get; }
         
         public MethodElement(string @namespace, string className)
         {
-            _namespace = @namespace;
-            _className = className;
+            Namespace = @namespace;
+            ClassName = className;
             _source = new StringBuilder();
         }
 
@@ -21,9 +23,9 @@ namespace MagicMapper.Generator.Serialization
             var source = $@"
                 using System;
 
-                namespace {_namespace}
+                namespace {Namespace}
                 {{
-                    public partial class {_className}
+                    public partial class {ClassName}
                     {{
                         
                     }}
