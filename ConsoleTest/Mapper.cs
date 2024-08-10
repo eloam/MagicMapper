@@ -1,30 +1,33 @@
-using MagicMapper;
+using MagicMapper.Generator;
+using MagicMapper.Generator.Attributes;
 
 namespace ConsoleTest;
 
+[Mapper]
 public partial class Mapper
 {
-    [Mapper]
-    [UnderlyingType<AddressDto, Address>]
     public partial Person Map(PersonDto value);
-    
-    [Mapper]
-    public partial Address Map(AddressDto value);
+
+    public Mapper()
+    {
+
+    }
 }
 
-/*public partial class Mapper
+public partial class Mapper
 {
-    public partial Person Map(PersonDto value)
+  /*  public partial Person Map(PersonDto value)
     {
         return null; 
-    }
+    }*/
 
-    public partial Address Map(AddressDto value)
+    /*public partial Address Map(AddressDto value)
     {
         return null;
-    }
+    }*/
 }
-*/
+
+
 
 
 public class Person
@@ -38,7 +41,7 @@ public class Person
 public class PersonDto
 {
     public string FirstName { get; set; }
-    public string LastName { get; set; }
+    public required string LastName { get; set; }
     public int Age { get; set; }
     public AddressDto Address { get; set; }
 }

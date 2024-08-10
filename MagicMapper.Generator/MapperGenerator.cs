@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -23,23 +24,21 @@ namespace MagicMapper.Generator
             if (!(context.SyntaxReceiver is SyntaxReceiver receiver))
                 return;
 
-            var attributeSymbol = context.Compilation.GetTypeByMetadataName("MagicMapper.MapperAttribute");
-
-            ClassBuilderSourceWriter classBuilderSourceWriter = new ClassBuilderSourceWriter();
+            ClassBuilderSourceFactory classBuilderSourceFactory = new ClassBuilderSourceFactory();
 
             foreach (var method in receiver.CandidateMethods)
             {
                 var model = context.Compilation.GetSemanticModel(method.SyntaxTree);
                 var methodSymbol = model.GetDeclaredSymbol(method) as IMethodSymbol;
-                
+
                 if (methodSymbol == null)
                     continue;
-                
-                MapperClassSyntaxDeclarationBuilder classBuilder = classBuilderSourceWriter.TryAddClass(methodSymbol);
-                classBuilder.AddMapperMethod(methodSymbol);
+
+                ClassBuilderSource classBuilderSource = classBuilderSourceFactory.TryAddClass(methodSymbol);
+                classBuilderSource.AddMapperMethod(methodSymbol);
             }
 
-            foreach (MapperClassSyntaxDeclarationBuilder classDeclaration in classBuilderSourceWriter.Classes)
+            foreach (ClassBuilderSource classDeclaration in classBuilderSourceFactory.Classes)
             {
                 context.AddSource($"{classDeclaration.Name}.g.cs", SourceText.From(classDeclaration.Build(), Encoding.UTF8));
             }
@@ -51,12 +50,19 @@ namespace MagicMapper.Generator
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                if (syntaxNode is MethodDeclarationSyntax methodDeclarationSyntax &&
-                    methodDeclarationSyntax.AttributeLists.Any(attrList =>
-                        attrList.Attributes.Any(attr =>
-                            attr.Name.ToString() == "Mapper")))
+                Func<AttributeListSyntax, bool> visitorAttribute = attrList => attrList.Attributes.Any(attr => attr.Name.ToString() == "Mapper");
+
+                if (syntaxNode is MethodDeclarationSyntax methodDeclarationSyntax && methodDeclarationSyntax.AttributeLists.Any(visitorAttribute))
                 {
                     CandidateMethods.Add(methodDeclarationSyntax);
+                }
+
+                if (syntaxNode is ClassDeclarationSyntax classDeclarationSyntax && classDeclarationSyntax.AttributeLists.Any(visitorAttribute))
+                {
+                    foreach (var method in classDeclarationSyntax.Members.OfType<MethodDeclarationSyntax>())
+                    {
+                        CandidateMethods.Add(method);
+                    }
                 }
             }
         }

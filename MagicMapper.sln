@@ -1,7 +1,5 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagicMapper", "MagicMapper\MagicMapper.csproj", "{BEE723D7-618A-4A75-8267-106D5F514723}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MagicMapper.Generator", "MagicMapper.Generator\MagicMapper.Generator.csproj", "{7C912047-07B3-483E-A992-11531521544F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleTest", "ConsoleTest\ConsoleTest.csproj", "{4D5A695B-902B-4D7F-ADB8-1D8E874E40DA}"
@@ -12,10 +10,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BEE723D7-618A-4A75-8267-106D5F514723}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BEE723D7-618A-4A75-8267-106D5F514723}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BEE723D7-618A-4A75-8267-106D5F514723}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BEE723D7-618A-4A75-8267-106D5F514723}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7C912047-07B3-483E-A992-11531521544F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7C912047-07B3-483E-A992-11531521544F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C912047-07B3-483E-A992-11531521544F}.Release|Any CPU.ActiveCfg = Release|Any CPU
