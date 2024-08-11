@@ -25,10 +25,8 @@ public class ClassBuilderSource : ISyntaxBuilder
 
     public void AddMapperMethod(IMethodSymbol methodSymbol)
     {
-        // Add using directives for the method parameters
-        methodSymbol.Parameters.Select(parameterSymbol => parameterSymbol.Type.ContainingNamespace)
-            .ToList()
-            .ForEach(TryAddUsingDirective);
+        ObjectMapper objectMapper = new(methodSymbol);
+        objectMapper.NamespaceAdded += OnObjectMapperOnNamespaceAdded;
 
         // Add using directive for the method return type
         ParameterSyntax[] parameters = methodSymbol.Parameters.Select(parameterSymbol => SyntaxFactory
@@ -42,17 +40,23 @@ public class ClassBuilderSource : ISyntaxBuilder
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PartialKeyword))
             .AddParameterListParameters(parameters)
-            .WithBody(SyntaxFactory.Block(new ObjectMapper(methodSymbol).Map()))
+            .WithBody(SyntaxFactory.Block(statements: objectMapper.Map()))
             .NormalizeWhitespace();
 
         _methods.Add(methodDeclaration);
     }
 
-  
+    private void OnObjectMapperOnNamespaceAdded(object sender, INamespaceSymbol[] namespaces)
+    {
+        foreach (INamespaceSymbol namespaceSymbol in namespaces)
+        {
+            TryAddUsingDirective(namespaceSymbol);
+        }
+    }
 
     private void TryAddUsingDirective(INamespaceSymbol namespaceSymbol)
     {
-        UsingDirectiveSyntax usingDirective = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(namespaceSymbol.Name))
+        UsingDirectiveSyntax usingDirective = SyntaxFactory.UsingDirective(SyntaxFactory.ParseName(namespaceSymbol.ToDisplayString()))
             .NormalizeWhitespace();
         
         if(_usings.Any(x => x.ToFullString() == usingDirective.ToFullString())) 

@@ -9,7 +9,7 @@ public class ClassBuilderSourceFactory
 {
     public IList<ClassBuilderSource> Classes { get; } = [];
 
-    public ClassBuilderSource TryAddClass(IMethodSymbol methodSymbol)
+    public ClassBuilderSource FindOrCreateClass(IMethodSymbol methodSymbol)
     {
         string ns = methodSymbol.ContainingNamespace.Name;
         string className = methodSymbol.ContainingType.Name;

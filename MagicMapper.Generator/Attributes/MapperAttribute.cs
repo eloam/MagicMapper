@@ -1,5 +1,4 @@
 using System;
-using MagicMapper.Generator.Common;
 
 namespace MagicMapper.Generator.Attributes;
 

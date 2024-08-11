@@ -1,70 +1,128 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using MagicMapper.Generator.Syntax;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-namespace MagicMapper.Generator
+namespace MagicMapper.Generator;
+
+[Generator]
+internal sealed class MapperIncrementalGenerator : IIncrementalGenerator
 {
-    [Generator]
-    public class MapperGenerator : ISourceGenerator
+    public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        public void Initialize(GeneratorInitializationContext context)
-        {
-            Debugger.Launch();
-            context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
-        }
+        Debugger.Launch();
 
-        public void Execute(GeneratorExecutionContext context)
-        {
-            if (!(context.SyntaxReceiver is SyntaxReceiver receiver))
-                return;
+        var methodDeclarations = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (syntaxNode, _) => IsMethodWithMapperAttribute(syntaxNode),
+                transform: static (context, _) => GetMethodSymbol(context))
+            .Where(static methodSymbol => methodSymbol is not null);
 
+        context.RegisterSourceOutput(methodDeclarations, (sourceContext, methodSymbols) =>
+        {
             ClassBuilderSourceFactory classBuilderSourceFactory = new ClassBuilderSourceFactory();
-
-            foreach (var method in receiver.CandidateMethods)
+            foreach (IMethodSymbol methodSymbol in methodSymbols)
             {
-                var model = context.Compilation.GetSemanticModel(method.SyntaxTree);
-                var methodSymbol = model.GetDeclaredSymbol(method) as IMethodSymbol;
-
-                if (methodSymbol == null)
-                    continue;
-
-                ClassBuilderSource classBuilderSource = classBuilderSourceFactory.TryAddClass(methodSymbol);
+                ClassBuilderSource classBuilderSource = classBuilderSourceFactory.FindOrCreateClass(methodSymbol);
                 classBuilderSource.AddMapperMethod(methodSymbol);
             }
 
-            foreach (ClassBuilderSource classDeclaration in classBuilderSourceFactory.Classes)
+#if !NOSOURCE
+            foreach (ClassBuilderSource? classDeclaration in classBuilderSourceFactory.Classes)
             {
-                context.AddSource($"{classDeclaration.Name}.g.cs", SourceText.From(classDeclaration.Build(), Encoding.UTF8));
+                sourceContext.AddSource($"{classDeclaration.Name}.g.cs", SourceText.From(classDeclaration.Build(), Encoding.UTF8));
             }
-        }
+#endif
+        });
+    }
 
-        class SyntaxReceiver : ISyntaxReceiver
+    private static bool IsMethodWithMapperAttribute(SyntaxNode syntaxNode)
+    {
+        return syntaxNode switch
         {
-            public List<MethodDeclarationSyntax> CandidateMethods { get; } = [];
+            MethodDeclarationSyntax methodDeclarationSyntax => HasMapperAttribute(methodDeclarationSyntax.AttributeLists),
+            ClassDeclarationSyntax classDeclarationSyntax => HasMapperAttribute(classDeclarationSyntax.AttributeLists),
+            _ => false
+        };
+    }
+    
+    private static bool HasMapperAttribute(SyntaxList<AttributeListSyntax> attributes)
+    {
+        return attributes.SelectMany(attrList => attrList.Attributes).Any(attrSyntax => attrSyntax.Name.ToString() == "Mapper");
+    }
 
-            public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
+    private static IEnumerable<IMethodSymbol> GetMethodSymbol(GeneratorSyntaxContext context)
+    {
+        List<IMethodSymbol> methodSymbols = [];
+        
+        switch (context.Node)
+        {
+            case MethodDeclarationSyntax methodDeclarationSyntax:
             {
-                Func<AttributeListSyntax, bool> visitorAttribute = attrList => attrList.Attributes.Any(attr => attr.Name.ToString() == "Mapper");
-
-                if (syntaxNode is MethodDeclarationSyntax methodDeclarationSyntax && methodDeclarationSyntax.AttributeLists.Any(visitorAttribute))
+                methodSymbols.AddIfNotNull(item: CandidateMethod(context, methodDeclarationSyntax));
+                break;
+            }
+            case ClassDeclarationSyntax classDeclarationSyntax:
+            {
+                foreach (MethodDeclarationSyntax methodDeclarationSyntax in classDeclarationSyntax.Members.OfType<MethodDeclarationSyntax>())
                 {
-                    CandidateMethods.Add(methodDeclarationSyntax);
+                    methodSymbols.AddIfNotNull(item: CandidateMethod(context, methodDeclarationSyntax));
                 }
-
-                if (syntaxNode is ClassDeclarationSyntax classDeclarationSyntax && classDeclarationSyntax.AttributeLists.Any(visitorAttribute))
-                {
-                    foreach (var method in classDeclarationSyntax.Members.OfType<MethodDeclarationSyntax>())
-                    {
-                        CandidateMethods.Add(method);
-                    }
-                }
+                break;
             }
         }
+        
+        return methodSymbols;
+    }
+    
+    private static IMethodSymbol? CandidateMethod(GeneratorSyntaxContext context, MethodDeclarationSyntax methodDeclarationSyntax)
+    {
+        // Is a public or internal method
+        if (!methodDeclarationSyntax.Modifiers.Any(token => token.IsKind(SyntaxKind.PublicKeyword) || token.IsKind(SyntaxKind.InternalKeyword))) 
+            return null;
+        
+        // Is a public or internal class
+        if (methodDeclarationSyntax.Parent is ClassDeclarationSyntax classDeclarationSyntax && 
+            !classDeclarationSyntax.Modifiers.Any(token => token.IsKind(SyntaxKind.PublicKeyword) || token.IsKind(SyntaxKind.InternalKeyword))) 
+            return null;
+        
+        // Is a partial method
+        if(!methodDeclarationSyntax.Modifiers.Any(SyntaxKind.PartialKeyword))
+            return null;
+        
+        if (IsNotAllowedType(methodDeclarationSyntax.ReturnType))
+            return null;
+        
+        IMethodSymbol? methodSymbol = ModelExtensions.GetDeclaredSymbol(context.SemanticModel, methodDeclarationSyntax) as IMethodSymbol;
+        
+        if (methodSymbol is null)
+            return null;
+
+        if (!IsCustomType(methodSymbol.ReturnType))
+            return null;
+        
+        return methodSymbol;
+    }
+    
+    private static bool IsNotAllowedType(TypeSyntax typeSyntax)
+    {
+        var primitiveTypes = new HashSet<string>
+        {
+            "bool", "byte", "sbyte", "char", "decimal", "double", "float", "int", "uint", "long", "ulong", "short", "ushort", "string", "void"
+        };
+
+        return primitiveTypes.Contains(typeSyntax.ToString());
+    }
+    
+    private static bool IsCustomType(ITypeSymbol typeSymbol)
+    {
+        return typeSymbol.TypeKind is TypeKind.Class or TypeKind.Struct;
     }
 }

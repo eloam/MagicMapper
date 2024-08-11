@@ -9,6 +9,8 @@ namespace MagicMapper.Generator.Syntax;
 public class ObjectMapper
 {
     private readonly IMethodSymbol _methodSymbol;
+    
+    public event EventHandler<INamespaceSymbol[]>? NamespaceAdded;
 
     public ObjectMapper(IMethodSymbol methodSymbol)
     {
@@ -31,6 +33,8 @@ public class ObjectMapper
 
     private ObjectCreationExpressionSyntax MapObject(string inputSymbolName, ITypeSymbol inputType, ITypeSymbol outputType)
     {
+        OnNamespaceAdded([inputType.ContainingNamespace, outputType.ContainingNamespace]);
+        
         AssignmentExpressionSyntax?[] assignments = outputType.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(outputProperty => outputProperty.SetMethod != null)
@@ -70,5 +74,10 @@ public class ObjectMapper
         return inputProperty.Type.Equals(outputProperty.Type, SymbolEqualityComparer.Default) == false &&
                (inputProperty.Type.TypeKind is TypeKind.Class or TypeKind.Struct && 
                 outputProperty.Type.TypeKind is TypeKind.Class or TypeKind.Struct);
+    }
+    
+    protected virtual void OnNamespaceAdded(INamespaceSymbol[] namespaceSymbols)
+    {
+        NamespaceAdded?.Invoke(this, namespaceSymbols);
     }
 }
